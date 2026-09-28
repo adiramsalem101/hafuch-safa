@@ -4,3 +4,4 @@
 *.ini text eol=crlf
 *.ico binary
 *.png binary
+*.cmd text eol=crlf
