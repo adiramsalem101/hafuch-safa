@@ -16,7 +16,7 @@
 #Include %A_ScriptDir%\lib\system.ahk
 
 global HS_VERSION := "1.0.0"
-global HS_HOMEPAGE := "https://github.com/"
+global HS_HOMEPAGE := "https://github.com/adiramsalem101/hafuch-safa"
 global HS_ConfigPath := A_ScriptDir "\config.ini"
 global HS_Cfg := ""                 ; validated settings (see HS_BuildSettings)
 global HS_Table := ""               ; conversion table in use
