@@ -186,20 +186,6 @@ HS_InList(item, list) {
 ; ---------------------------------------------------------------------------
 
 class HS_Clip {
-    static offered := ""       ; text waiting to be pasted
-    static pending := false
-    static renderTick := 0     ; when an application asked for the text
-    static renderPid := 0      ; which process asked (0 = unknown)
-    static ready := false
-
-    static Init() {
-        if this.ready
-            return
-        OnMessage(0x0305, ObjBindMethod(this, "OnRenderFormat"))       ; WM_RENDERFORMAT
-        OnMessage(0x0306, ObjBindMethod(this, "OnRenderAllFormats"))   ; WM_RENDERALLFORMATS
-        this.ready := true
-    }
-
     ; Registered formats that ask Windows clipboard history, cloud clipboard
     ; and clipboard managers to ignore the content. [format id, DWORD value]
     static PrivacyFormats() {
@@ -246,69 +232,6 @@ class HS_Clip {
         return h
     }
 
-    ; Puts text on the clipboard with delayed rendering: Windows asks this
-    ; script for the text only when an application reads it, which tells us
-    ; exactly when the paste happened, so the user's clipboard can be put
-    ; back right away instead of after a guessed delay.
-    static Offer(text) {
-        this.Init()
-        if !this.Open()
-            return false
-        DllCall("EmptyClipboard")
-        this.offered := text
-        this.pending := true
-        this.renderTick := 0
-        this.renderPid := 0
-        DllCall("SetClipboardData", "UInt", 13, "Ptr", 0)   ; CF_UNICODETEXT, rendered on request
-        for f in this.PrivacyFormats()
-            DllCall("SetClipboardData", "UInt", f[1], "Ptr", this.GlobalDword(f[2]))
-        DllCall("CloseClipboard")
-        return true
-    }
-
-    static OnRenderFormat(wParam, lParam, msg, hwnd) {
-        if (wParam != 13 || !this.pending)
-            return
-        ; The reading application holds the clipboard open; just hand over the data.
-        DllCall("SetClipboardData", "UInt", 13, "Ptr", this.GlobalText(this.offered))
-        pid := 0
-        if (opener := DllCall("GetOpenClipboardWindow", "Ptr"))
-            DllCall("GetWindowThreadProcessId", "Ptr", opener, "UInt*", &pid)
-        this.renderPid := pid
-        this.renderTick := A_TickCount
-        return 0
-    }
-
-    static OnRenderAllFormats(wParam, lParam, msg, hwnd) {
-        if !this.pending
-            return
-        if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) {
-            if (DllCall("GetClipboardOwner", "Ptr") = A_ScriptHwnd)
-                DllCall("SetClipboardData", "UInt", 13, "Ptr", this.GlobalText(this.offered))
-            DllCall("CloseClipboard")
-        }
-        return 0
-    }
-
-    ; After Ctrl+V: waits until the target application reads the offered text.
-    ;   "pasted"  the target (or an unknown reader) read it
-    ;   "unsure"  another program read it first, so the paste moment is
-    ;             unknown; waited fallbackMs instead
-    ;   "none"    nobody read it within timeoutMs (the app ignored Ctrl+V)
-    static WaitForPaste(sinceTick, targetPid, timeoutMs, fallbackMs) {
-        deadline := A_TickCount + timeoutMs
-        while (A_TickCount < deadline) {
-            if this.renderTick {
-                if (this.renderTick >= sinceTick && (!this.renderPid || this.renderPid = targetPid))
-                    return "pasted"
-                Sleep fallbackMs
-                return "unsure"
-            }
-            Sleep 10
-        }
-        return "none"
-    }
-
     ; Splits a ClipboardAll() snapshot into its entries; 0 if it looks wrong.
     ; Layout per entry: UInt format, UInt size, data; a UInt 0 ends the list.
     static Entries(saved) {
@@ -331,13 +254,11 @@ class HS_Clip {
     ; Puts a snapshot back. The privacy formats are added to it so that the
     ; restore does not show up a second time in clipboard history.
     static Restore(saved) {
-        this.pending := false
-        this.offered := ""
         if !IsObject(saved)
             return
         entries := saved.Size ? this.Entries(saved) : []
         try {
-            if (entries = 0) {
+            if !IsObject(entries) {
                 A_Clipboard := saved
             } else if !entries.Length {
                 A_Clipboard := ""

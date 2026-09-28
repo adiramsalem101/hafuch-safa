@@ -265,11 +265,11 @@ HS_DefaultSettingsText() {
     HebrewLayout=auto
     SwitchLayout=1
     ExpandWindowMs=2000
-    InsertMethod=paste
+    InsertMethod=type
     TerminalInsertMethod=type
-    PasteTimeoutMs=2000
-    PasteFallbackDelayMs=400
+    PasteRestoreDelayMs=300
     ShowTips=1
+    DebugLog=0
     ExcludeApps=
     TerminalApps=WindowsTerminal.exe,OpenConsole.exe,conhost.exe,cmd.exe,powershell.exe,pwsh.exe,wsl.exe,bash.exe,mintty.exe,putty.exe,kitty.exe,alacritty.exe,wezterm-gui.exe,ConEmu.exe,ConEmu64.exe,Tabby.exe,Hyper.exe,WindowsTerminalPreview.exe
     LineCopyApps=Code.exe,Code - Insiders.exe,Cursor.exe,Windsurf.exe,devenv.exe,sublime_text.exe,idea64.exe,pycharm64.exe,webstorm64.exe,phpstorm64.exe,rider64.exe,clion64.exe,goland64.exe,rubymine64.exe,datagrip64.exe,studio64.exe
@@ -328,9 +328,9 @@ HS_BuildSettings(userMap) {
 
     s.switchLayout := HS_ReadBool(raw, defaults, "SwitchLayout", errors)
     s.showTips := HS_ReadBool(raw, defaults, "ShowTips", errors)
+    s.debugLog := HS_ReadBool(raw, defaults, "DebugLog", errors)
     s.expandMs := HS_ReadInt(raw, defaults, "ExpandWindowMs", 200, 10000, errors)
-    s.pasteTimeoutMs := HS_ReadInt(raw, defaults, "PasteTimeoutMs", 200, 10000, errors)
-    s.pasteFallbackMs := HS_ReadInt(raw, defaults, "PasteFallbackDelayMs", 50, 5000, errors)
+    s.pasteRestoreMs := HS_ReadInt(raw, defaults, "PasteRestoreDelayMs", 50, 5000, errors)
     s.insert := HS_ReadChoice(raw, defaults, "InsertMethod", ["paste", "type"], errors)
     s.termInsert := HS_ReadChoice(raw, defaults, "TerminalInsertMethod", ["paste", "type"], errors)
     s.excludeApps := HS_SplitList(raw["ExcludeApps"])

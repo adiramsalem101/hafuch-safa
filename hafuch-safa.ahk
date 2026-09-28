@@ -56,7 +56,6 @@ HS_Main() {
         HS_Warn("בקובץ ההגדרות יש ערכים לא תקינים, ובמקומם נעשה שימוש בברירת המחדל:`n`n" HS_Join(built.errors, "`n"))
     HS_HotkeyVK := GetKeyVK(HS_Cfg.hotkey.key)
     HS_LoadTable()
-    HS_Clip.Init()
     HS_SetupTray()
     HS_StartWatcher()
     HS_RegisterHotkey()
@@ -214,9 +213,11 @@ HS_OnHotkey(*) {
     hwnd := DllCall("GetForegroundWindow", "Ptr")
     if !hwnd
         return
+    HS_Log("press: app=" HS_ProcessName(hwnd) " buffer=" StrLen(HS_Buf.text) " chars, same window=" (HS_Buf.hwnd = hwnd) " chain=" HS_Chain.kind "/" (HS_Chain.version = HS_Buf.version) "/" (pressTick - HS_Chain.tick) "ms")
     try {
         HS_Flip(hwnd, pressTick)
     } catch as e {
+        HS_Log("error: " e.Message " line " e.Line)
         HS_Tip("הפוך שפה: " e.Message)
     }
 }
@@ -253,17 +254,17 @@ HS_FlipTail(hwnd, isTerm, n, dir, kind) {
     keep := StrLen(text) - n
     tail := SubStr(text, keep + 1)
     flipped := HS_ConvertWithShadow(tail, SubStr(shadow, keep + 1), dir, HS_Table)
-    if (flipped == tail) {
-        HS_AfterFlip(hwnd, dir)
+    HS_Log("flip " kind ": " n " chars " dir (isTerm ? " (terminal)" : ""))
+    ; Switch first: the new text is then typed as real keys of the target layout.
+    HS_SwitchTo(hwnd, dir)
+    if (flipped == tail)
         return
-    }
     if !HS_ReplaceBeforeCaret(hwnd, isTerm, tail, flipped)
         return
     HS_Buf.text := SubStr(text, 1, keep) flipped
     HS_Buf.shadow := SubStr(shadow, 1, keep) tail
     HS_Buf.version++
     HS_Chain := {hwnd: hwnd, version: HS_Buf.version, tick: A_TickCount, len: n, dir: dir, kind: kind}
-    HS_AfterFlip(hwnd, dir)
 }
 
 ; Pressed again within the time window: flip one more word to the left.
@@ -280,14 +281,15 @@ HS_ExpandChain(hwnd, isTerm) {
     }
     added := SubStr(prefix, start)
     span := SubStr(text, keep + 1)
+    HS_Log("extend: +" StrLen(added) " chars " HS_Chain.dir)
     flippedAdded := HS_ConvertWithShadow(added, SubStr(shadow, start, StrLen(added)), HS_Chain.dir, HS_Table)
+    HS_SwitchTo(hwnd, HS_Chain.dir)
     if !HS_ReplaceBeforeCaret(hwnd, isTerm, added span, flippedAdded span)
         return
     HS_Buf.text := SubStr(text, 1, start - 1) flippedAdded span
     HS_Buf.shadow := SubStr(shadow, 1, start - 1) added SubStr(shadow, keep + 1)
     HS_Buf.version++
     HS_Chain := {hwnd: hwnd, version: HS_Buf.version, tick: A_TickCount, len: n + StrLen(added), dir: HS_Chain.dir, kind: "word"}
-    HS_AfterFlip(hwnd, HS_Chain.dir)
 }
 
 ; Nothing typed is known here: flip the selection, or select the word before
@@ -313,19 +315,24 @@ HS_FlipSelection(hwnd) {
     }
     dir := HS_DetectDirection(text, HS_TieDirection(hwnd))
     flipped := HS_Convert(text, dir, HS_Table)
+    HS_Log("flip " kind " (read with the clipboard): " StrLen(text) " chars " dir)
+    HS_SwitchTo(hwnd, dir)
     if (flipped == text) {
         HS_Clip.Restore(saved)
-        HS_AfterFlip(hwnd, dir)
         return
     }
-    result := HS_PasteWithClipboard(hwnd, flipped)
-    HS_Clip.Restore(saved)
-    if (result = "none" && !HS_TypeText(hwnd, flipped))
+    if (HS_Cfg.insert = "paste") {
+        ok := HS_PasteText(hwnd, flipped)
+        HS_Clip.Restore(saved)
+    } else {
+        HS_Clip.Restore(saved)
+        ok := HS_TypeText(hwnd, flipped)   ; typing replaces the selection
+    }
+    if !ok
         return
     HS_Buf.text := flipped, HS_Buf.shadow := text, HS_Buf.hwnd := hwnd
     HS_Buf.version++
     HS_Chain := {hwnd: hwnd, version: HS_Buf.version, tick: A_TickCount, len: StrLen(flipped), dir: dir, kind: kind}
-    HS_AfterFlip(hwnd, dir)
 }
 
 HS_CopySelection(hwnd, copyKeys, timeoutMs) {
@@ -374,59 +381,70 @@ HS_SelectPreviousWord(hwnd, copyKeys) {
 ; ---------------------------------------------------------------------------
 
 HS_ReplaceBeforeCaret(hwnd, isTerm, oldText, newText) {
-    if !WinActive("ahk_id " hwnd)
+    if !WinActive("ahk_id " hwnd) {
+        HS_Log("replace: window no longer active, nothing sent")
         return false
+    }
     same := HS_CommonPrefixLength(oldText, newText)
     count := HS_BackspaceCount(SubStr(oldText, same + 1))
+    HS_Log("replace: backspaces=" count " insert=" (StrLen(newText) - same) " chars")
     if (count > 0)
         Send "{Backspace " count "}"
     return HS_Insert(hwnd, isTerm, SubStr(newText, same + 1))
 }
 
+; Default: type the text as keystrokes. A paste can silently fail when another
+; program reads the clipboard at the same moment (see ASSUMPTIONS.md), and
+; that would leave the old word deleted with nothing in its place.
 HS_Insert(hwnd, isTerm, text) {
     if (text = "")
         return true
-    if ((isTerm ? HS_Cfg.termInsert : HS_Cfg.insert) = "type")
-        return HS_TypeText(hwnd, text)
-    saved := HS_Clip.Snapshot()
-    if !IsObject(saved)
-        return HS_TypeText(hwnd, text)   ; clipboard busy: type instead
-    result := HS_PasteWithClipboard(hwnd, text)
-    HS_Clip.Restore(saved)
-    if (result = "none")
-        return HS_TypeText(hwnd, text)   ; the app ignored Ctrl+V
-    return true
+    if ((isTerm ? HS_Cfg.termInsert : HS_Cfg.insert) = "paste") {
+        saved := HS_Clip.Snapshot()
+        if IsObject(saved) {
+            ok := HS_PasteText(hwnd, text)
+            HS_Clip.Restore(saved)
+            return ok
+        }
+    }
+    return HS_TypeText(hwnd, text)
 }
 
 HS_TypeText(hwnd, text) {
-    if !WinActive("ahk_id " hwnd)
+    if !WinActive("ahk_id " hwnd) {
+        HS_Log("type: window no longer active, " StrLen(text) " chars not typed")
         return false
+    }
+    HS_Log("type: " StrLen(text) " chars")
     SendText text
     return true
 }
 
-; Offers text on the clipboard and presses Ctrl+V. The caller restores the
-; clipboard. Returns "pasted", "unsure" or "none" (see HS_Clip.WaitForPaste).
-HS_PasteWithClipboard(hwnd, text) {
-    if !HS_Clip.Offer(text)
-        return "none"
-    if !WinActive("ahk_id " hwnd)
-        return "none"
-    since := A_TickCount
+; InsertMethod=paste: puts the text on the clipboard (kept out of clipboard
+; history), presses Ctrl+V and gives the application PasteRestoreDelayMs to
+; read it. The caller puts the user's clipboard back afterwards.
+HS_PasteText(hwnd, text) {
+    if !WinActive("ahk_id " hwnd) {
+        HS_Log("paste: window no longer active")
+        return false
+    }
+    if !HS_Clip.SetPrivateText(text) {
+        HS_Log("paste: clipboard busy, typing instead")
+        return HS_TypeText(hwnd, text)
+    }
+    HS_Log("paste: " StrLen(text) " chars")
     Send "^{vk56}"
-    result := HS_Clip.WaitForPaste(since, HS_WinPid(hwnd), HS_Cfg.pasteTimeoutMs, HS_Cfg.pasteFallbackMs)
-    if (result = "pasted")
-        Sleep 50
-    return result
+    Sleep HS_Cfg.pasteRestoreMs
+    return true
 }
 
-HS_AfterFlip(hwnd, dir) {
+HS_SwitchTo(hwnd, dir) {
     global HS_WarnedMissing
     if !HS_Cfg.switchLayout
         return
     lang := HS_TargetLang(dir)
     if HS_FindHkl(lang)
-        HS_SwitchLayout(hwnd, lang)
+        HS_Log("layout: switch to " lang " -> " (HS_SwitchLayout(hwnd, lang) ? "ok" : "failed"))
     else if !HS_WarnedMissing {
         HS_WarnedMissing := true
         HS_Tip(lang = "he" ? "פריסת מקלדת עברית לא מותקנת, אין לאן לעבור" : "פריסת מקלדת אנגלית לא מותקנת, אין לאן לעבור")
@@ -500,3 +518,11 @@ HS_Tip(msg) {
 }
 
 HS_Warn(msg) => MsgBox(msg, "הפוך שפה", 0x180030)
+
+; DebugLog=1 in config.ini: one line per step in %TEMP%\hafuch-safa-debug.log.
+; Only lengths and results are written, never the text itself.
+HS_Log(msg) {
+    if !(IsObject(HS_Cfg) && HS_Cfg.debugLog)
+        return
+    try FileAppend(FormatTime(, "HH:mm:ss") "." Format("{:03}", A_MSec) " " msg "`n", A_Temp "\hafuch-safa-debug.log", "UTF-8")
+}

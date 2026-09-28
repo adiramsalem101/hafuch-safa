@@ -98,7 +98,7 @@ r := HS_BuildSettings(Map())
 Eq("settings: defaults have no errors", r.errors.Length, 0)
 Eq("settings: default hotkey", r.settings.hotkey.display, "Ctrl+Alt+L")
 Eq("settings: default expand window", r.settings.expandMs, 2000)
-Eq("settings: default insert method", r.settings.insert, "paste")
+Eq("settings: default insert method types the text", r.settings.insert, "type")
 Eq("settings: terminals type instead of paste", r.settings.termInsert, "type")
 
 r := HS_BuildSettings(HS_ParseConfigText("; comment`n[General]`n Hotkey = Ctrl+Shift+K `nExpandWindowMs=1500`nHebrewLayout=MAC`n"))
@@ -110,7 +110,7 @@ Eq("settings: valid file has no errors", r.errors.Length, 0)
 r := HS_BuildSettings(HS_ParseConfigText("ExpandWindowMs=abc`nInsertMethod=magic`nSwitchLayout=maybe"))
 Eq("settings: three bad values reported", r.errors.Length, 3)
 Eq("settings: bad number falls back", r.settings.expandMs, 2000)
-Eq("settings: bad choice falls back", r.settings.insert, "paste")
+Eq("settings: bad choice falls back", r.settings.insert, "type")
 Eq("settings: bad switch falls back", r.settings.switchLayout, true)
 
 ; --- tables --------------------------------------------------------------------

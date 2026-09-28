@@ -39,6 +39,14 @@ if !WinExist("hafuch-safa.ahk ahk_class AutoHotkey")
 if !(HS_FindHkl("he") && HS_FindHkl("en"))
     Bail("an English and a Hebrew keyboard layout must both be installed")
 
+; Real keystrokes are used, so wait until nobody is using the keyboard or mouse.
+idleStart := A_TickCount
+while (A_TimeIdle < 1500) {
+    if (A_TickCount - idleStart > 15000)
+        Bail("the keyboard or mouse is in use; run the test again when the computer is idle")
+    Sleep 100
+}
+
 UserClip := ClipboardAll()
 UserHkl := HS_WindowHkl(HS_FocusHwnd(DllCall("GetForegroundWindow", "Ptr")))
 
@@ -114,8 +122,12 @@ RunCase(name, ctrl, startLang, typed, steps, wantLang, opts := {}) {
 }
 
 Guard() {
-    if !WinActive("ahk_id " G.Hwnd)
-        Bail("the test window lost focus; stopped so no keys go to another window")
+    if WinActive("ahk_id " G.Hwnd)
+        return
+    fg := DllCall("GetForegroundWindow", "Ptr"), who := "none"
+    if fg
+        try who := WinGetProcessName("ahk_id " fg) " / " WinGetClass("ahk_id " fg)
+    Bail("the test window lost focus to [" who "]; stopped so no keys go to another window")
 }
 
 Keys(keys) {

@@ -84,7 +84,15 @@ if ($E2E) {
     }
     Write-Host ''
     Write-Host "== end-to-end (config: $Config) =="
-    $results['e2e'] = Invoke-AhkScript (Join-Path $here 'e2e-test.ahk') @($Config)
+    # Exit code 99 means the run stopped because another window took focus
+    # (or the computer was in use); nothing was typed elsewhere. Try again.
+    foreach ($attempt in 1..3) {
+        $code = Invoke-AhkScript (Join-Path $here 'e2e-test.ahk') @($Config)
+        if ($code -ne 99) { break }
+        Write-Host "(interrupted, attempt $attempt of 3)"
+        Start-Sleep -Seconds 2
+    }
+    $results['e2e'] = $code
 }
 
 Write-Host ''
