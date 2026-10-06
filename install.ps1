@@ -3,11 +3,17 @@
     Installs hafuch-safa for the current user. No administrator rights needed.
 
 .DESCRIPTION
-    1. Installs AutoHotkey v2 with winget (per-user scope) if it is missing.
+    1. If AutoHotkey v2 is missing, installs it with winget (per-user scope).
+       When winget is missing, too old or fails, it downloads the official
+       portable AutoHotkey v2 from GitHub instead (SHA256 checked) and keeps
+       it inside the install folder.
     2. Copies the tool to %LOCALAPPDATA%\hafuch-safa. An existing config.ini
        there is kept, so reinstalling or upgrading keeps your settings.
     3. Adds a shortcut to your Startup folder so the tool runs at sign-in.
     4. Starts the tool.
+
+.PARAMETER PortableAutoHotkey
+    Skip winget and use the portable AutoHotkey download directly.
 
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
@@ -18,11 +24,18 @@
 param(
     [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'hafuch-safa'),
     [switch]$NoAutostart,
-    [switch]$NoLaunch
+    [switch]$NoLaunch,
+    [switch]$PortableAutoHotkey
 )
 
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+# GitHub needs TLS 1.2, which older Windows 10 builds do not enable by default.
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 $Version = '1.0.0'
+# Portable AutoHotkey used when winget cannot install it (official release asset).
+$PortableUrl = 'https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.29/AutoHotkey_2.0.29.zip'
+$PortableSha256 = 'b2d0200724a6b6ad22c965c939c5e5a2c64a35d1ccb455a3ca3f8ce415c5a296'
 $source = Split-Path -Parent $MyInvocation.MyCommand.Path
 $scriptPath = Join-Path $InstallDir 'hafuch-safa.ahk'
 $statePath = Join-Path $InstallDir 'install-state.json'
@@ -37,7 +50,7 @@ function Find-AutoHotkey {
         $dir = (Get-ItemProperty -Path $key -Name InstallDir -ErrorAction SilentlyContinue).InstallDir
         if ($dir) { $dirs += $dir }
     }
-    $dirs += "$env:LOCALAPPDATA\Programs\AutoHotkey", "$env:ProgramFiles\AutoHotkey"
+    $dirs += "$env:LOCALAPPDATA\Programs\AutoHotkey", "$env:ProgramFiles\AutoHotkey", (Join-Path $InstallDir 'autohotkey')
     foreach ($dir in $dirs) {
         foreach ($candidate in (Join-Path $dir "v2\$exe"), (Join-Path $dir $exe)) {
             if (Test-Path $candidate) {
@@ -66,6 +79,24 @@ if (Test-Path $statePath) {
     try { $previous = Get-Content $statePath -Raw | ConvertFrom-Json } catch { $previous = $null }
 }
 
+# Official portable AutoHotkey, kept in <install folder>\autohotkey.
+function Install-PortableAutoHotkey {
+    $target = Join-Path $InstallDir 'autohotkey'
+    $zip = Join-Path $env:TEMP ('hafuch-safa-ahk-' + [Guid]::NewGuid().ToString('N').Substring(0, 8) + '.zip')
+    try {
+        Write-Step 'Downloading the portable AutoHotkey v2 from github.com/AutoHotkey...'
+        Invoke-WebRequest -Uri $PortableUrl -OutFile $zip -UseBasicParsing
+        $hash = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLower()
+        if ($hash -ne $PortableSha256) { throw "the download failed its SHA256 check ($hash)" }
+        New-Item -ItemType Directory -Force -Path $target | Out-Null
+        Expand-Archive -Path $zip -DestinationPath $target -Force
+        Get-ChildItem -Path $target -Recurse -File | Unblock-File
+    }
+    finally {
+        Remove-Item $zip -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # 1. AutoHotkey v2
 $ahk = Find-AutoHotkey
 $installedAhk = [bool]($previous -and $previous.autoHotkeyInstalledByInstaller)
@@ -73,15 +104,26 @@ if ($ahk) {
     Write-Step "AutoHotkey v2 found: $ahk"
 }
 else {
-    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        throw 'AutoHotkey v2 is missing and winget is not available. Install AutoHotkey v2 from https://www.autohotkey.com and run install.ps1 again.'
+    if (-not $PortableAutoHotkey -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+        Write-Step 'Installing AutoHotkey v2 for the current user (winget)...'
+        # No --disable-interactivity: winget versions before 1.4 reject it.
+        try {
+            & winget install --id AutoHotkey.AutoHotkey --exact --source winget --scope user --silent --accept-package-agreements --accept-source-agreements
+        }
+        catch {
+            Write-Step "winget failed to run: $($_.Exception.Message)"
+        }
+        $ahk = Find-AutoHotkey
+        if ($ahk) { $installedAhk = $true }
+        else { Write-Step 'winget could not install AutoHotkey, using the portable version instead' }
     }
-    Write-Step 'Installing AutoHotkey v2 for the current user (winget)...'
-    & winget install --id AutoHotkey.AutoHotkey --exact --source winget --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
-    $ahk = Find-AutoHotkey
-    if (-not $ahk) { throw 'AutoHotkey v2 could not be installed. Install it from https://www.autohotkey.com and run install.ps1 again.' }
-    $installedAhk = $true
-    Write-Step "AutoHotkey v2 installed: $ahk"
+    if (-not $ahk) {
+        try { Install-PortableAutoHotkey }
+        catch { throw "AutoHotkey v2 could not be installed ($($_.Exception.Message)). Install it from https://www.autohotkey.com and run this again." }
+        $ahk = Find-AutoHotkey
+        if (-not $ahk) { throw 'AutoHotkey v2 could not be installed. Install it from https://www.autohotkey.com and run this again.' }
+    }
+    Write-Step "AutoHotkey v2 ready: $ahk"
 }
 
 # 2. Stop a running copy, then copy the files
@@ -134,6 +176,7 @@ $state = [ordered]@{
     installDir                     = $InstallDir
     autoHotkey                     = $ahk
     autoHotkeyInstalledByInstaller = $installedAhk
+    autoHotkeyPortable             = $ahk.StartsWith((Join-Path $InstallDir 'autohotkey'), [StringComparison]::OrdinalIgnoreCase)
     startupShortcut                = $(if ($NoAutostart) { '' } else { $shortcutPath })
 }
 $state | ConvertTo-Json | Set-Content -Path $statePath -Encoding UTF8

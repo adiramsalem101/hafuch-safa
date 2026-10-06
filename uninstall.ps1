@@ -66,7 +66,13 @@ if ($state -and $state.autoHotkeyInstalledByInstaller -and -not $KeepAutoHotkey)
     }
     elseif (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Step 'Uninstalling AutoHotkey (it was installed by install.ps1)'
-        & winget uninstall --id AutoHotkey.AutoHotkey --exact --source winget --scope user --silent --disable-interactivity
+        # No --disable-interactivity: winget versions before 1.4 reject it.
+        try {
+            & winget uninstall --id AutoHotkey.AutoHotkey --exact --source winget --scope user --silent
+        }
+        catch {
+            Write-Warning "winget could not uninstall AutoHotkey: $($_.Exception.Message)"
+        }
     }
 }
 elseif ($state -and $state.autoHotkeyInstalledByInstaller) {

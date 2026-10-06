@@ -29,7 +29,7 @@ function Find-AutoHotkey {
         $dir = (Get-ItemProperty -Path $key -Name InstallDir -ErrorAction SilentlyContinue).InstallDir
         if ($dir) { $dirs += $dir }
     }
-    $dirs += "$env:LOCALAPPDATA\Programs\AutoHotkey", "$env:ProgramFiles\AutoHotkey"
+    $dirs += "$env:LOCALAPPDATA\Programs\AutoHotkey", "$env:ProgramFiles\AutoHotkey", "$env:LOCALAPPDATA\hafuch-safa\autohotkey"
     foreach ($dir in $dirs) {
         foreach ($candidate in (Join-Path $dir "v2\$exe"), (Join-Path $dir $exe)) {
             if (Test-Path $candidate) {
