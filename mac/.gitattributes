@@ -1,0 +1,6 @@
+# macOS files keep LF line endings (the root file sets CRLF for *.ini of Windows)
+*.sh text eol=lf
+*.lua text eol=lf
+*.ini text eol=lf
+*.swift text eol=lf
+*.md text eol=lf
