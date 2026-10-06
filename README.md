@@ -36,6 +36,18 @@
 
 ## התקנה
 
+### בשורה אחת
+
+מעתיקים את השורה הזו ומדביקים בטרמינל (cmd, PowerShell או Windows Terminal), או בחלון "הפעלה" (<kbd>Win</kbd>+<kbd>R</kbd>), ולוחצים Enter:
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/adiramsalem101/hafuch-safa/main/get.ps1 | iex"
+```
+
+השורה מורידה את הפרויקט לתיקייה זמנית, מריצה את ההתקנה ומוחקת את התיקייה הזמנית. אין צורך בהרשאות מנהל.
+
+### או ידנית
+
 1. מורידים את הפרויקט: בעמוד הזה ב-GitHub לוחצים על **Code** ואז **Download ZIP** וחולצים את הקובץ, או מריצים `git clone https://github.com/adiramsalem101/hafuch-safa.git`.
 2. לוחצים לחיצה כפולה על `install.cmd`.
 
@@ -126,7 +138,13 @@ Hotkey=Ctrl+Alt+L
 
 ## הסרה
 
-לחיצה כפולה על `uninstall.cmd` (נמצא גם בתיקיית ההתקנה `%LOCALAPPDATA%\hafuch-safa`), או:
+הכי פשוט: <kbd>Win</kbd>+<kbd>R</kbd>, מדביקים את השורה הבאה ולוחצים Enter (עובד גם ב-cmd):
+
+```
+%LOCALAPPDATA%\hafuch-safa\uninstall.cmd
+```
+
+או לחיצה כפולה על `uninstall.cmd` בתיקיית ההתקנה `%LOCALAPPDATA%\hafuch-safa`, או מ-PowerShell:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\hafuch-safa\uninstall.ps1"
@@ -175,6 +193,12 @@ tests\                בדיקות
 - The direction follows the majority of letters. Digits, spaces and shared symbols stay as they are.
 - The key map is read from the layouts installed in Windows, so any Hebrew or English variant works.
 - Selected text is read through the clipboard, and the clipboard is restored right after.
-- Install: double-click `install.cmd` (installs AutoHotkey v2 per user if needed, no admin rights). Settings: `%LOCALAPPDATA%\hafuch-safa\config.ini`. Uninstall: `uninstall.cmd`.
+- Install in one line (cmd, PowerShell or Win+R):
+
+  ```
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/adiramsalem101/hafuch-safa/main/get.ps1 | iex"
+  ```
+
+  or download the project and double-click `install.cmd`. Either way AutoHotkey v2 is installed per user if needed, with no admin rights. Settings: `%LOCALAPPDATA%\hafuch-safa\config.ini`. Uninstall: `uninstall.cmd`.
 
 MIT licensed.
