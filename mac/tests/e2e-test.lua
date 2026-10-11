@@ -195,17 +195,23 @@ return function(outPath, options)
             pressHotkey()
             return { check("first", first, "יקךךם"), check("text", docText(), "Hello"), check("source", currentLang(), "en") }
         end },
+        -- macOS may capitalize the first word by itself (Capitalize words
+        -- automatically), so the unselected part is compared with what was
+        -- typed, not with a fixed string.
         { "a selection flips and nothing else", function()
             setSource("en"); typeKeys("akuo nv")
+            local typed = docText()
             key({ "shift" }, 123); key({ "shift" }, 123)
             pressHotkey()
-            return { check("text", docText(), "akuo מה"), check("source", currentLang(), "he") }
+            return { check("typed", typed:lower(), "akuo nv"), check("text", docText(), typed:sub(1, -3) .. "מה"),
+                check("source", currentLang(), "he") }
         end },
         { "a quick second press flips the selection back", function()
             setSource("en"); typeKeys("akuo nv")
+            local typed = docText()
             key({ "shift" }, 123); key({ "shift" }, 123)
             pressHotkey(2, 300)
-            return { check("text", docText(), "akuo nv") }
+            return { check("typed", typed:lower(), "akuo nv"), check("text", docText(), typed) }
         end },
         { "without typing memory (arrow keys) the word before the caret is selected", function()
             setSource("en"); typeKeys("akuo")
