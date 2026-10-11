@@ -48,7 +48,7 @@ download_hammerspoon() {
     local target="${1:-$HOME/Applications}" tmp url
     tmp="$(mktemp -d)"
     url="$(curl -fsSL https://api.github.com/repos/Hammerspoon/hammerspoon/releases/latest \
-        | grep -o '"browser_download_url": *"[^"]*Hammerspoon-[0-9.]*\.zip"' | head -n 1 | sed 's/.*"\(https[^"]*\)"/\1/')"
+        | grep -o '"browser_download_url": *"[^"]*Hammerspoon-[0-9.]*\.zip"' | head -n 1 | sed 's/.*"\(https[^"]*\)"/\1/' || true)"
     [ -n "$url" ] || { rm -rf "$tmp"; fail "could not find the Hammerspoon download on GitHub"; }
     say "Downloading $url"
     curl -fsSL -o "$tmp/hs.zip" "$url" || { rm -rf "$tmp"; fail "download failed"; }
@@ -56,7 +56,11 @@ download_hammerspoon() {
     [ -d "$tmp/x/Hammerspoon.app" ] || { rm -rf "$tmp"; fail "the download has no Hammerspoon.app"; }
     codesign --verify --deep --strict "$tmp/x/Hammerspoon.app" 2>/dev/null \
         || { rm -rf "$tmp"; fail "the Hammerspoon download failed the signature check"; }
-    codesign -dv "$tmp/x/Hammerspoon.app" 2>&1 | grep -q "TeamIdentifier=$HS_TEAM_ID" \
+    # Read all of codesign's output first: piped into grep -q, codesign got
+    # SIGPIPE after the matching line and pipefail failed the check.
+    local sig
+    sig="$(codesign -dv "$tmp/x/Hammerspoon.app" 2>&1 || true)"
+    [[ "$sig" == *"TeamIdentifier=$HS_TEAM_ID"* ]] \
         || { rm -rf "$tmp"; fail "the Hammerspoon download is not signed by the Hammerspoon team"; }
     mkdir -p "$target"
     rm -rf "$target/Hammerspoon.app"

@@ -42,8 +42,10 @@ main() {
     # Is there Hammerspoon config besides our line? Blank lines and Lua
     # comments do not count.
     local other_config=0
-    if [ -f "$init" ] && grep -vF 'hafuch-safa/init.lua' "$init" \
-        | grep -vE '^[[:space:]]*(--.*)?$' | grep -q .; then
+    # Read to the end (no grep -q): an early exit can SIGPIPE the grep before
+    # it, and under pipefail a long config would then count as none.
+    if [ -f "$init" ] && [ -n "$(grep -vF 'hafuch-safa/init.lua' "$init" \
+        | grep -vE '^[[:space:]]*(--.*)?$' || true)" ]; then
         other_config=1
     fi
 
