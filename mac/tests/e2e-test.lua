@@ -102,17 +102,18 @@ return function(outPath, options)
         sleep(250) -- let TextEdit handle the last posted events
     end
 
-    -- Holds Ctrl and Option, taps L, lets go: like a person pressing it.
+    -- Holds the modifiers of the configured hotkey (Ctrl+Option+L unless
+    -- config.ini says otherwise), taps its key, lets go: like a person
+    -- pressing it.
     local function pressHotkey(times, gapMs)
+        local hk = hafuchSafa.status().hotkey
         times = times or 1
         for i = 1, times do
             guard()
-            hs.eventtap.event.newKeyEvent(hs.keycodes.map.ctrl, true):post()
-            hs.eventtap.event.newKeyEvent(hs.keycodes.map.alt, true):post()
-            hs.eventtap.event.newKeyEvent({ "ctrl", "alt" }, 37, true):post()
-            hs.eventtap.event.newKeyEvent({ "ctrl", "alt" }, 37, false):post()
-            hs.eventtap.event.newKeyEvent(hs.keycodes.map.alt, false):post()
-            hs.eventtap.event.newKeyEvent(hs.keycodes.map.ctrl, false):post()
+            for _, m in ipairs(hk.mods) do hs.eventtap.event.newKeyEvent(hs.keycodes.map[m], true):post() end
+            hs.eventtap.event.newKeyEvent(hk.mods, hk.keyCode, true):post()
+            hs.eventtap.event.newKeyEvent(hk.mods, hk.keyCode, false):post()
+            for j = #hk.mods, 1, -1 do hs.eventtap.event.newKeyEvent(hs.keycodes.map[hk.mods[j]], false):post() end
             if i < times then sleep(gapMs or 300) end
         end
         waitIdle()

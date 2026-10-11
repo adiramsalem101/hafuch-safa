@@ -11,7 +11,7 @@
 -- Settings: config.ini next to this file. License: MIT.
 
 local M = {}
-M.version = "1.0.0"
+M.version = "1.0.1"
 M.homepage = "https://github.com/adiramsalem101/hafuch-safa"
 
 local dir = debug.getinfo(1, "S").source:match("^@(.*/)")
@@ -682,6 +682,11 @@ local function firstRun()
     end
     if hs.accessibilityState(false) then
         hs.alert.show("הפוך שפה הותקן. קיצור: " .. cfg.hotkey.display, 5)
+    else
+        -- Ask once with the system prompt. That adds Hammerspoon to the
+        -- Accessibility list, so the user only has to turn its switch on;
+        -- Hammerspoon itself checks without asking.
+        hs.accessibilityState(true)
     end
 end
 
@@ -735,7 +740,7 @@ end
 -- For the end-to-end test.
 function M.status()
     return { busy = busy, queued = #queue, paused = paused, bufferLength = buf.n, chainKind = chain.kind,
-        insert = cfg.insert, table = tableSource }
+        insert = cfg.insert, table = tableSource, hotkey = { mods = cfg.hotkey.mods, keyCode = cfg.hotkey.keyCode } }
 end
 
 function M.setOption(key, value)
