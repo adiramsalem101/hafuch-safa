@@ -137,7 +137,7 @@ find_hammerspoon() {
 restart_hammerspoon() {
     local app="$1" cli="$1/Contents/Frameworks/hs/hs" i
     if pgrep -xq Hammerspoon; then
-        if [ -x "$cli" ] && perl -e 'alarm 5; exec @ARGV' "$cli" -c '_hafuchSafaReload = hs.timer.doAfter(0.3, hs.reload) return true' >/dev/null 2>&1; then
+        if [ -x "$cli" ] && perl -e 'alarm 5; exec @ARGV' "$cli" -c '_hafuchSafaReload = hs.timer.doAfter(0.3, hs.reload) return true' < /dev/null >/dev/null 2>&1; then
             sleep 1
             return
         fi

@@ -140,7 +140,7 @@ if pgrep -xq Hammerspoon; then
     # The hs command line tool works only if the existing config loads
     # hs.ipc. Otherwise quit Hammerspoon and start it again.
     if [ -x "$HS_CLI" ]; then
-        perl -e 'alarm 5; exec @ARGV' "$HS_CLI" -c '_hafuchSafaReload = hs.timer.doAfter(0.3, hs.reload) return true' >/dev/null 2>&1 || true
+        perl -e 'alarm 5; exec @ARGV' "$HS_CLI" -c '_hafuchSafaReload = hs.timer.doAfter(0.3, hs.reload) return true' < /dev/null >/dev/null 2>&1 || true
     fi
     for _ in $(seq 1 30); do [ -f "$DEST/state.txt" ] && break; sleep 0.1; done
     if [ ! -f "$DEST/state.txt" ]; then
