@@ -57,14 +57,29 @@ return function(outPath, options)
         return app and app:bundleID() == TEXTEDIT
     end
 
+    local function frontDescription()
+        local w = hs.window.focusedWindow()
+        local app = w and w:application()
+        return w and (tostring(app and app:name()) .. " | " .. tostring(w:title())) or "no focused window"
+    end
+
+    -- One accessibility query can come back empty while TextEdit is still
+    -- handling the keys just posted, so a miss is checked again for up to
+    -- 300 ms before the run stops. Nothing is sent in between. The message
+    -- names the window that is in front, to tell a real interruption (a
+    -- click in another app) from a test problem.
     local function guard()
         if abort then error(abort, 0) end
         if nowMs() > caseDeadline then
             error("case took more than 30 seconds", 0)
         end
         if not ourDocInFront() then
-            abort = "focus moved away from the test document, stopping"
-            error(abort, 0)
+            local deadline = nowMs() + 300
+            repeat sleep(30) until ourDocInFront() or nowMs() > deadline
+            if not ourDocInFront() then
+                abort = "focus moved away from the test document (" .. frontDescription() .. "), stopping"
+                error(abort, 0)
+            end
         end
     end
 

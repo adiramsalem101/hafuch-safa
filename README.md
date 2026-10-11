@@ -111,9 +111,9 @@ Hotkey=Ctrl+Alt+L
 
 ### דרישות
 
-- macOS 12 ומעלה (נבדק ב-macOS 15.7).
-- מקור קלט עברי ומקור קלט אנגלי מוגדרים (הגדרות המערכת > מקלדת > מקורות קלט). כל אחד מ-Hebrew, Hebrew-PC או Hebrew-QWERTY מתאים, ובצד האנגלי ABC או U.S.
-- [Hammerspoon](https://www.hammerspoon.org), כלי אוטומציה חינמי בקוד פתוח שהכלי רץ בתוכו. אם הוא חסר, ההתקנה מתקינה אותו לבד: דרך Homebrew אם הוא קיים, ואחרת מדף ה-Releases הרשמי ב-GitHub אל `~/Applications` (עם בדיקת חתימה).
+- macOS 13 ומעלה, כי Hammerspoon 1.1.1 לא נפתח בגרסאות ישנות יותר. ההתקנה בודקת את זה ואומרת. נבדק ב-macOS 15.7.
+- מקור קלט עברי ומקור קלט אנגלי מוגדרים (הגדרות המערכת > מקלדת > מקורות קלט). כל אחד מ-Hebrew, Hebrew-PC או Hebrew-QWERTY מתאים, ובצד האנגלי ABC או U.S. אם אין מקור קלט עברי, ההתקנה אומרת איך להוסיף אותו.
+- [Hammerspoon](https://www.hammerspoon.org), כלי אוטומציה חינמי בקוד פתוח שהכלי רץ בתוכו. אם הוא חסר, ההתקנה מתקינה אותו לבד מדף ה-Releases הרשמי ב-GitHub אל `~/Applications`: גרסה קבועה שנבדקה (1.1.1), עם בדיקת SHA256 ובדיקת חתימה של צוות Hammerspoon. לא דרך Homebrew, כי אז macOS עוצר את ההפעלה הראשונה בחלון אישור שההתקנה לא רואה.
 
 ### התקנה בשורה אחת
 
@@ -129,15 +129,18 @@ curl -fsSL https://raw.githubusercontent.com/adiramsalem101/hafuch-safa/main/get
 
 מה ההתקנה עושה:
 
-- מתקינה Hammerspoon אם הוא חסר.
+- מתקינה Hammerspoon אם הוא חסר (בלי Homebrew ובלי סיסמת מנהל).
 - מעתיקה את הכלי אל `~/.hammerspoon/hafuch-safa`. התקנה חוזרת (שדרוג) שומרת את קובץ ההגדרות הקיים.
 - מוסיפה שורה אחת לסוף `~/.hammerspoon/init.lua`, ורק אם היא עוד לא שם. שאר הקובץ לא משתנה, כך שהגדרות Hammerspoon קיימות ממשיכות לעבוד.
 - מפעילה את Hammerspoon בכניסה למחשב.
+- אם Control ו-Command מוחלפים אצלכם, מגדירה את הקיצור כך שהמקשים Control+Option+L יעבדו (פרטים ב[מה שונה במק](#מה-שונה-במק)).
 - מפעילה את Hammerspoon. בשורת התפריטים יופיע הסמל אA.
 
 ### הרשאת נגישות (פעם אחת)
 
-macOS מאפשר לתוכנה לקרוא הקלדה ולשלוח הקשות רק אחרי אישור מפורש שלכם. בסוף ההתקנה נפתח החלון **הגדרות המערכת > פרטיות ואבטחה > נגישות**: מפעילים את המתג ליד **Hammerspoon** (ייתכן שתתבקשו לאשר עם סיסמה או Touch ID). הכלי מזהה את האישור לבד ומציג "הפוך שפה מוכן", בלי צורך להפעיל משהו מחדש.
+macOS מאפשר לתוכנה לקרוא הקלדה ולשלוח הקשות רק אחרי אישור מפורש שלכם. בהפעלה הראשונה macOS שואל על Hammerspoon: לוחצים "פתח את הגדרות המערכת" (Open System Settings). ההתקנה גם פותחת בעצמה את **הגדרות המערכת > פרטיות ואבטחה > נגישות**: מפעילים את המתג ליד **Hammerspoon** (ייתכן שתתבקשו לאשר עם סיסמה או Touch ID). חלון ההגדרות של Hammerspoon עצמו, שנפתח באותו זמן, אפשר לסגור.
+
+ההתקנה ממתינה עד 5 דקות למתג ואומרת כשהכלי מוכן. גם אם המתג מופעל מאוחר יותר, הכלי מזהה את האישור לבד ומציג "הפוך שפה מוכן", בלי להריץ שוב את ההתקנה.
 
 ### שימוש
 
@@ -170,6 +173,7 @@ macOS מאפשר לתוכנה לקרוא הקלדה ולשלוח הקשות רק
 - טקסט מסומן שיש בו ירידת שורה מודבק תמיד דרך הלוח, כי Enter שולח הודעה באפליקציות צ'אט.
 - הכלי זוכר את מה שהקלדתם באפליקציה שבחזית. לחיצת עכבר, חיצים, Enter, Tab, קיצור עם Cmd או Ctrl ומעבר אפליקציה מאפסים את הזיכרון. אחרי איפוס הכלי מסמן את המילה שלפני הסמן בעצמו (Option+Shift+Left), או שמסמנים ידנית ולוחצים.
 - תיקון אוטומטי של macOS עלול לשנות מילה שהוקלדה לפני הלחיצה. במקרה כזה מסמנים את המילה ולוחצים.
+- מי שהחליף בין Control ל-Command (הגדרות המערכת > מקלדת > מקשי צירוף, או hidutil, נפוץ אצל מי שמגיע מ-Windows): המקש Control שולח אצלו Command, ולכן Ctrl+Option+L לא היה מגיע לכלי. ההתקנה מזהה את ההחלפה ומגדירה `Hotkey=Cmd+Option+L`, כך שעל המקלדת לוחצים Control+Option+L כמו ב-Windows. בהתקנה חוזרת קובץ ההגדרות הקיים נשמר כמו שהוא.
 - `Ctrl+Option+L` לא תפוס במערכת ולא באפליקציות הנפוצות שנבדקו. אם הוא מתנגש אצלכם במשהו, משנים את `Hotkey` או מוסיפים את האפליקציה ל-`ExcludeApps`.
 
 ### הסרה
@@ -188,7 +192,7 @@ bash mac/tests/run-tests.sh --e2e
 
 - `mac/tests/unit-tests.lua`: 111 בדיקות לפונקציות ההמרה. 83 הראשונות הן הבדיקות של Windows אחת לאחת.
 - `mac/tests/layout-dump.swift`: מדפיס מה כל מקש מקליד במקורות הקלט העבריים והאנגליים של macOS, לבדיקת טבלאות המיפוי.
-- `mac/tests/e2e-test.lua`: פותח מסמך משלו ב-TextEdit, מקליד בו הקשות אמיתיות ולוחץ על הקיצור מול הכלי המותקן, ובודק את הטקסט, את מקור הקלט ואת הלוח. בזמן הריצה (כ-30 שניות) לא נוגעים במקלדת ובעכבר. הבדיקה נעצרת מעצמה אם חלון אחר עולה לחזית.
+- `mac/tests/e2e-test.lua`: פותח מסמך משלו ב-TextEdit, מקליד בו הקשות אמיתיות ולוחץ על הקיצור שמוגדר ב-`config.ini` מול הכלי המותקן, ובודק את הטקסט, את מקור הקלט ואת הלוח. בזמן הריצה (כ-30 שניות) לא נוגעים במקלדת ובעכבר ולא עוברים לחלון אחר. הבדיקה נעצרת מעצמה אם חלון אחר עולה לחזית.
 
 ## כללי ההמרה
 
@@ -294,14 +298,15 @@ mac/tests/            בדיקות ל-macOS
 
   or download the project and double-click `install.cmd`. Either way AutoHotkey v2 is installed per user if needed, with no admin rights. Settings: `%LOCALAPPDATA%\hafuch-safa\config.ini`. Uninstall: `uninstall.cmd`.
 
-**macOS** (runs inside [Hammerspoon](https://www.hammerspoon.org), which the installer adds if it is missing; no admin password). Install in one line from Terminal:
+**macOS 13 or later** (runs inside [Hammerspoon](https://www.hammerspoon.org). If it is missing, the installer downloads the official release, a pinned 1.1.1 checked by SHA256 and code signature; no Homebrew, no admin password). Install in one line from Terminal:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/adiramsalem101/hafuch-safa/main/get.sh | bash
 ```
 
 - Hotkey: <kbd>Ctrl</kbd>+<kbd>Option</kbd>+<kbd>L</kbd>. Settings: `~/.hammerspoon/hafuch-safa/config.ini` (same keys as on Windows).
-- One manual step: when System Settings opens at **Privacy & Security > Accessibility**, turn on **Hammerspoon**. macOS requires this before any app may read typing or send keystrokes.
+- One manual step: when System Settings opens at **Privacy & Security > Accessibility**, turn on **Hammerspoon** (macOS may ask about Hammerspoon first: click Open System Settings). macOS requires this before any app may read typing or send keystrokes. The installer waits for the switch and says when the tool is ready.
+- Control and Command swapped (Modifier Keys or hidutil, common after Windows): the installer notices and sets `Hotkey=Cmd+Option+L`, so the keys marked Control+Option+L work.
 - The installer adds a single line to the end of `~/.hammerspoon/init.lua` and changes nothing else there.
 - Uninstall: `bash ~/.hammerspoon/hafuch-safa/uninstall.sh` (removes that line, the module, and Hammerspoon too if the installer installed it and nothing else uses it).
 - Tests: `bash mac/tests/run-tests.sh --e2e` (111 unit tests, and an end-to-end test that types into a TextEdit document of its own).
