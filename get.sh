@@ -10,8 +10,9 @@ set -euo pipefail
 
 main() {
     local url="https://github.com/adiramsalem101/hafuch-safa/archive/refs/heads/main.zip"
-    local tmp
     [ "$(uname -s)" = "Darwin" ] || { echo "hafuch-safa: this installer is for macOS. On Windows see the README." >&2; exit 1; }
+    # Global, not local: the EXIT trap runs after main has returned, and
+    # under set -u a local tmp would be unbound there.
     tmp="$(mktemp -d "${TMPDIR:-/tmp}/hafuch-safa.XXXXXX")"
     trap 'rm -rf "$tmp"' EXIT
     echo "Downloading hafuch-safa..."
